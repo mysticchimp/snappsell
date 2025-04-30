@@ -371,17 +371,31 @@ const ImageUploader: React.FC = () => {
                       top: `${obj.boundingBox.top}%`,
                       width: `${obj.boundingBox.width}%`,
                       height: `${obj.boundingBox.height}%`,
-                      border: '2px solid #FFD700',
+                      border: '3px solid #FFD700',
+                      boxShadow: '0 0 8px rgba(255, 215, 0, 0.5)',
                       borderRadius: 1,
-                      backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                      backgroundColor: 'rgba(255, 215, 0, 0.15)',
                       display: 'flex',
                       alignItems: 'flex-start',
                       justifyContent: 'center',
                       cursor: 'pointer',
-                      transition: 'all 0.2s ease-in-out',
+                      transition: 'all 0.3s ease-in-out',
+                      animation: 'boxPulse 2s infinite',
                       '&:hover': {
-                        backgroundColor: 'rgba(255, 215, 0, 0.2)',
-                        transform: 'scale(1.02)'
+                        backgroundColor: 'rgba(255, 215, 0, 0.25)',
+                        transform: 'scale(1.02)',
+                        boxShadow: '0 0 12px rgba(255, 215, 0, 0.7)'
+                      },
+                      '@keyframes boxPulse': {
+                        '0%': {
+                          boxShadow: '0 0 8px rgba(255, 215, 0, 0.5)'
+                        },
+                        '50%': {
+                          boxShadow: '0 0 16px rgba(255, 215, 0, 0.7)'
+                        },
+                        '100%': {
+                          boxShadow: '0 0 8px rgba(255, 215, 0, 0.5)'
+                        }
                       }
                     }}
                   >
@@ -389,14 +403,22 @@ const ImageUploader: React.FC = () => {
                       sx={{
                         backgroundColor: '#FFD700',
                         color: 'black',
-                        fontSize: '12px',
-                        padding: '2px 4px',
-                        borderRadius: '0 0 4px 4px',
+                        fontSize: '14px',
+                        padding: '4px 8px',
+                        borderRadius: '0 0 8px 8px',
                         maxWidth: '100%',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
-                        fontWeight: 'bold'
+                        fontWeight: 'bold',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                        backdropFilter: 'blur(4px)',
+                        transform: 'translateY(-2px)',
+                        transition: 'all 0.3s ease-in-out',
+                        '&:hover': {
+                          transform: 'translateY(0)',
+                          backgroundColor: '#FFE44D'
+                        }
                       }}
                     >
                       {obj.name} ({Math.round(obj.confidence * 100)}%)
@@ -435,15 +457,31 @@ const ImageUploader: React.FC = () => {
                       top: `${obj.boundingBox.top}%`,
                       width: `${obj.boundingBox.width}%`,
                       height: `${obj.boundingBox.height}%`,
-                      border: '2px solid #FFD700',
+                      border: '3px solid #FFD700',
+                      boxShadow: '0 0 8px rgba(255, 215, 0, 0.5)',
                       borderRadius: 1,
-                      backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                      backgroundColor: 'rgba(255, 215, 0, 0.15)',
                       display: 'flex',
                       alignItems: 'flex-start',
                       justifyContent: 'center',
                       cursor: 'pointer',
+                      transition: 'all 0.3s ease-in-out',
+                      animation: 'boxPulse 2s infinite',
                       '&:hover': {
-                        backgroundColor: 'rgba(255, 215, 0, 0.2)',
+                        backgroundColor: 'rgba(255, 215, 0, 0.25)',
+                        transform: 'scale(1.02)',
+                        boxShadow: '0 0 12px rgba(255, 215, 0, 0.7)'
+                      },
+                      '@keyframes boxPulse': {
+                        '0%': {
+                          boxShadow: '0 0 8px rgba(255, 215, 0, 0.5)'
+                        },
+                        '50%': {
+                          boxShadow: '0 0 16px rgba(255, 215, 0, 0.7)'
+                        },
+                        '100%': {
+                          boxShadow: '0 0 8px rgba(255, 215, 0, 0.5)'
+                        }
                       }
                     }}
                   >
@@ -451,13 +489,22 @@ const ImageUploader: React.FC = () => {
                       sx={{
                         backgroundColor: '#FFD700',
                         color: 'black',
-                        fontSize: '12px',
-                        padding: '2px 4px',
-                        borderRadius: '0 0 4px 4px',
+                        fontSize: '14px',
+                        padding: '4px 8px',
+                        borderRadius: '0 0 8px 8px',
                         maxWidth: '100%',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
+                        whiteSpace: 'nowrap',
+                        fontWeight: 'bold',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                        backdropFilter: 'blur(4px)',
+                        transform: 'translateY(-2px)',
+                        transition: 'all 0.3s ease-in-out',
+                        '&:hover': {
+                          transform: 'translateY(0)',
+                          backgroundColor: '#FFE44D'
+                        }
                       }}
                     >
                       {obj.name} ({Math.round(obj.confidence * 100)}%)
