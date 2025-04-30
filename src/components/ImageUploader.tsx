@@ -39,14 +39,13 @@ const ImageUploader: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [savedObjects, setSavedObjects] = useState<ObjectDetection[]>([]);
   const [isScanning, setIsScanning] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [cameraStatus, setCameraStatus] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const [cameraStatus, setCameraStatus] = useState<string>('');
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const analyzeIntervalRef = useRef<number | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const analyzeIntervalRef = useRef<number | null>(null);
 
   const handleImageUpload = async (file: File) => {
     if (file) {
@@ -286,25 +285,6 @@ const ImageUploader: React.FC = () => {
     };
   }, []);
 
-  const captureFrame = async () => {
-    if (videoRef.current) {
-      const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(videoRef.current, 0, 0);
-        canvas.toBlob(async (blob) => {
-          if (blob) {
-            const file = new File([blob], 'capture.jpg', { type: 'image/jpeg' });
-            await handleImageUpload(file);
-            stopScanning();
-          }
-        }, 'image/jpeg');
-      }
-    }
-  };
-
   const handleObjectClick = (object: ObjectDetection) => {
     if (!savedObjects.some(obj => obj.name === object.name)) {
       setSavedObjects([...savedObjects, object]);
@@ -441,7 +421,6 @@ const ImageUploader: React.FC = () => {
             ) : selectedImage ? (
               <Box sx={{ position: 'relative', width: '100%', maxWidth: '100%' }}>
                 <img 
-                  ref={imageRef}
                   src={selectedImage} 
                   alt="Uploaded item" 
                   style={{ maxWidth: '100%', maxHeight: 300 }}
