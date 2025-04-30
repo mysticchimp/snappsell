@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Box, 
   Button, 
@@ -11,17 +11,31 @@ import {
   Alert
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+interface ObjectDetection {
+  name: string;
+  confidence: number;
+  boundingBox: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  };
+}
 
 const ImageUploader: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [tags, setTags] = useState<string[]>([]);
+  const [objects, setObjects] = useState<ObjectDetection[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleImageUpload = async (file: File) => {
     if (file) {
       setIsLoading(true);
       setError(null);
@@ -50,15 +64,32 @@ const ImageUploader: React.FC = () => {
         }
 
         const data = await response.json();
-        console.log('Received tags:', data);
-        setTags(data.labels);
+        console.log('Received data:', data);
+        setTags(data.labels || []);
+        setObjects(data.objects || []);
       } catch (err) {
         console.error('Error:', err);
         setError(err instanceof Error ? err.message : 'An error occurred while processing the image');
         setTags([]);
+        setObjects([]);
       } finally {
         setIsLoading(false);
       }
+    }
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      handleImageUpload(file);
+    }
+  };
+
+  const handleCameraCapture = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.accept = "image/*";
+      fileInputRef.current.capture = "environment";
+      fileInputRef.current.click();
     }
   };
 
@@ -67,7 +98,7 @@ const ImageUploader: React.FC = () => {
       <Card>
         <CardContent>
           <Typography variant="h5" gutterBottom>
-            Upload an Item
+            Identify Objects
           </Typography>
           
           {error && (
@@ -90,12 +121,47 @@ const ImageUploader: React.FC = () => {
             position: 'relative'
           }}>
             {selectedImage ? (
-              <>
+              <Box sx={{ position: 'relative', width: '100%', maxWidth: '100%' }}>
                 <img 
+                  ref={imageRef}
                   src={selectedImage} 
                   alt="Uploaded item" 
                   style={{ maxWidth: '100%', maxHeight: 300 }}
                 />
+                {objects.map((obj, index) => (
+                  <Box
+                    key={index}
+                    sx={{
+                      position: 'absolute',
+                      left: `${obj.boundingBox.left}%`,
+                      top: `${obj.boundingBox.top}%`,
+                      width: `${obj.boundingBox.width}%`,
+                      height: `${obj.boundingBox.height}%`,
+                      border: '2px solid #4CAF50',
+                      borderRadius: 1,
+                      backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        backgroundColor: '#4CAF50',
+                        color: 'white',
+                        fontSize: '12px',
+                        padding: '2px 4px',
+                        borderRadius: '0 0 4px 4px',
+                        maxWidth: '100%',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {obj.name} ({Math.round(obj.confidence * 100)}%)
+                    </Typography>
+                  </Box>
+                ))}
                 {isLoading && (
                   <Box sx={{
                     position: 'absolute',
@@ -112,33 +178,45 @@ const ImageUploader: React.FC = () => {
                     <CircularProgress />
                   </Box>
                 )}
-              </>
+              </Box>
             ) : (
               <>
                 <CloudUploadIcon sx={{ fontSize: 48, color: 'gray', mb: 2 }} />
                 <Typography color="textSecondary">
-                  Drag and drop an image here, or click to select
+                  Take a photo or upload an image
                 </Typography>
               </>
             )}
             
             <input
+              ref={fileInputRef}
               type="file"
               accept="image/*"
-              onChange={handleImageUpload}
+              onChange={handleFileSelect}
               style={{ display: 'none' }}
               id="image-upload"
             />
-            <label htmlFor="image-upload">
+            
+            <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
               <Button
                 variant="contained"
-                component="span"
-                sx={{ mt: 2 }}
+                startIcon={<PhotoCameraIcon />}
+                onClick={handleCameraCapture}
                 disabled={isLoading}
               >
-                Select Image
+                Take Photo
               </Button>
-            </label>
+              <label htmlFor="image-upload">
+                <Button
+                  variant="outlined"
+                  component="span"
+                  startIcon={<CloudUploadIcon />}
+                  disabled={isLoading}
+                >
+                  Upload
+                </Button>
+              </label>
+            </Stack>
           </Box>
 
           {tags.length > 0 && (

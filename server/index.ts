@@ -85,40 +85,57 @@ app.post('/api/analyze-image', upload.single('image'), async (req, res) => {
       fieldname: req.file.fieldname
     });
     
-    // Perform label detection
+    // Perform object detection and label detection
     console.log('Sending request to Vision API...');
     try {
-      console.log('Request payload:', {
-        imageSize: req.file.buffer.length,
-        mimeType: req.file.mimetype
+      const [labelResult] = await vision.labelDetection({
+        image: { content: req.file.buffer }
       });
-      
-      const [result] = await vision.labelDetection({
-        image: {
-          content: req.file.buffer,
-        },
-      });
-      
-      if (!result) {
-        throw new Error('No response from Vision API');
-      }
-      
-      console.log('Vision API response:', JSON.stringify(result, null, 2));
 
-      const labels = result.labelAnnotations?.map(label => ({
+      const [objectResult] = await vision.objectLocalization({
+        image: { content: req.file.buffer }
+      });
+      
+      console.log('Vision API response:', {
+        labels: labelResult,
+        objects: objectResult
+      });
+
+      // Process labels
+      const labels = labelResult.labelAnnotations?.map(label => ({
         description: label.description,
         confidence: label.score,
       })) || [];
 
-      // Sort labels by confidence
+      // Process objects with locations
+      const objects = objectResult.localizedObjectAnnotations?.map(obj => {
+        const vertices = obj.boundingPoly?.normalizedVertices || [];
+        const xCoords = vertices.map(v => v.x || 0);
+        const yCoords = vertices.map(v => v.y || 0);
+        
+        return {
+          name: obj.name || 'Unknown',
+          confidence: obj.score || 0,
+          boundingBox: {
+            left: Math.min(...xCoords) * 100,
+            top: Math.min(...yCoords) * 100,
+            width: (Math.max(...xCoords) - Math.min(...xCoords)) * 100,
+            height: (Math.max(...yCoords) - Math.min(...yCoords)) * 100
+          }
+        };
+      }) || [];
+
+      // Sort by confidence
+      objects.sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
       labels.sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
 
-      // Return top 5 most confident labels
-      const topLabels = labels.slice(0, 5).map(label => label.description);
-      console.log('Sending labels:', topLabels);
-      
       res.json({
-        labels: topLabels,
+        labels: labels.slice(0, 5).map(label => label.description),
+        objects: objects.map(obj => ({
+          name: obj.name,
+          confidence: obj.confidence,
+          boundingBox: obj.boundingBox
+        }))
       });
     } catch (error: any) {
       console.error('Vision API Error Details:', {
@@ -134,16 +151,7 @@ app.post('/api/analyze-image', upload.single('image'), async (req, res) => {
       throw error;
     }
   } catch (error: any) {
-    console.error('Error processing image:', {
-      message: error.message,
-      code: error.code,
-      details: error.details,
-      stack: error.stack,
-      response: error.response?.data,
-      status: error.response?.status,
-      statusCode: error.statusCode,
-      errors: error.errors
-    });
+    console.error('Error processing image:', error);
     res.status(500).json({ 
       error: 'Error processing image',
       details: error.message || 'Unknown error'

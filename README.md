@@ -1,54 +1,75 @@
-# React + TypeScript + Vite
+# SnappSell
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A smart image recognition app that helps you identify and tag items for selling. Built with React, TypeScript, and Google Cloud Vision API.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Drag and drop image upload
+- Automatic item recognition using AI
+- Real-time tag generation
+- Modern, responsive UI
 
-## Expanding the ESLint configuration
+## Tech Stack
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- Frontend:
+  - React
+  - TypeScript
+  - Material-UI
+  - Vite
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+- Backend:
+  - Node.js
+  - Express
+  - Google Cloud Vision API
+  - TypeScript
+
+## Setup
+
+### Prerequisites
+
+- Node.js 18 or higher
+- npm or yarn
+- Google Cloud account with Vision API enabled
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone [your-repo-url]
+cd snappsell
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+2. Install dependencies:
+```bash
+# Install frontend dependencies
+npm install
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+# Install backend dependencies
+cd server
+npm install
 ```
+
+3. Set up environment variables:
+- Create a `.env` file in the root directory
+- Add your configuration:
+```
+VITE_API_URL=http://localhost:3000
+```
+
+4. Start the development servers:
+```bash
+# Start backend (from server directory)
+npm run dev
+
+# Start frontend (from root directory)
+npm run dev
+```
+
+## Deployment
+
+- Backend: Deployed on Google Cloud Run
+- Frontend: Deployed on Vercel
+
+## License
+
+MIT
