@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Box, 
   Button, 
@@ -15,7 +15,6 @@ import {
   IconButton
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import ScanIcon from '@mui/icons-material/QrCodeScanner';
 import DeleteIcon from '@mui/icons-material/Delete';
 
