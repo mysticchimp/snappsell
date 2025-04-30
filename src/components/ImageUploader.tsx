@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { 
   Box, 
   Button, 
@@ -8,10 +8,16 @@ import {
   Chip,
   Stack,
   CircularProgress,
-  Alert
+  Alert,
+  List,
+  ListItem,
+  ListItemText,
+  IconButton
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import ScanIcon from '@mui/icons-material/QrCodeScanner';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -32,8 +38,12 @@ const ImageUploader: React.FC = () => {
   const [objects, setObjects] = useState<ObjectDetection[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savedObjects, setSavedObjects] = useState<ObjectDetection[]>([]);
+  const [isScanning, setIsScanning] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const handleImageUpload = async (file: File) => {
     if (file) {
@@ -78,18 +88,63 @@ const ImageUploader: React.FC = () => {
     }
   };
 
+  const startScanning = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      setIsScanning(true);
+    } catch (err) {
+      console.error('Error accessing camera:', err);
+      setError('Failed to access camera');
+    }
+  };
+
+  const stopScanning = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setIsScanning(false);
+  };
+
+  const captureFrame = async () => {
+    if (videoRef.current) {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(videoRef.current, 0, 0);
+        canvas.toBlob(async (blob) => {
+          if (blob) {
+            const file = new File([blob], 'capture.jpg', { type: 'image/jpeg' });
+            await handleImageUpload(file);
+            stopScanning();
+          }
+        }, 'image/jpeg');
+      }
+    }
+  };
+
+  const handleObjectClick = (object: ObjectDetection) => {
+    if (!savedObjects.some(obj => obj.name === object.name)) {
+      setSavedObjects([...savedObjects, object]);
+    }
+  };
+
+  const removeSavedObject = (index: number) => {
+    setSavedObjects(savedObjects.filter((_, i) => i !== index));
+  };
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       handleImageUpload(file);
-    }
-  };
-
-  const handleCameraCapture = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.accept = "image/*";
-      fileInputRef.current.capture = "environment";
-      fileInputRef.current.click();
     }
   };
 
@@ -120,7 +175,24 @@ const ImageUploader: React.FC = () => {
             justifyContent: 'center',
             position: 'relative'
           }}>
-            {selectedImage ? (
+            {isScanning ? (
+              <Box sx={{ position: 'relative', width: '100%', maxWidth: '100%' }}>
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  style={{ maxWidth: '100%', maxHeight: 300 }}
+                />
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={captureFrame}
+                  sx={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)' }}
+                >
+                  Capture
+                </Button>
+              </Box>
+            ) : selectedImage ? (
               <Box sx={{ position: 'relative', width: '100%', maxWidth: '100%' }}>
                 <img 
                   ref={imageRef}
@@ -131,24 +203,29 @@ const ImageUploader: React.FC = () => {
                 {objects.map((obj, index) => (
                   <Box
                     key={index}
+                    onClick={() => handleObjectClick(obj)}
                     sx={{
                       position: 'absolute',
                       left: `${obj.boundingBox.left}%`,
                       top: `${obj.boundingBox.top}%`,
                       width: `${obj.boundingBox.width}%`,
                       height: `${obj.boundingBox.height}%`,
-                      border: '2px solid #4CAF50',
+                      border: '2px solid #FFD700',
                       borderRadius: 1,
-                      backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                      backgroundColor: 'rgba(255, 215, 0, 0.1)',
                       display: 'flex',
                       alignItems: 'flex-start',
                       justifyContent: 'center',
+                      cursor: 'pointer',
+                      '&:hover': {
+                        backgroundColor: 'rgba(255, 215, 0, 0.2)',
+                      }
                     }}
                   >
                     <Typography
                       sx={{
-                        backgroundColor: '#4CAF50',
-                        color: 'white',
+                        backgroundColor: '#FFD700',
+                        color: 'black',
                         fontSize: '12px',
                         padding: '2px 4px',
                         borderRadius: '0 0 4px 4px',
@@ -200,11 +277,11 @@ const ImageUploader: React.FC = () => {
             <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
               <Button
                 variant="contained"
-                startIcon={<PhotoCameraIcon />}
-                onClick={handleCameraCapture}
+                startIcon={<ScanIcon />}
+                onClick={isScanning ? stopScanning : startScanning}
                 disabled={isLoading}
               >
-                Take Photo
+                {isScanning ? 'Stop Scanning' : 'Start Scanning'}
               </Button>
               <label htmlFor="image-upload">
                 <Button
@@ -235,6 +312,31 @@ const ImageUploader: React.FC = () => {
                   />
                 ))}
               </Stack>
+            </Box>
+          )}
+
+          {savedObjects.length > 0 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle1" gutterBottom>
+                Saved Objects:
+              </Typography>
+              <List>
+                {savedObjects.map((obj, index) => (
+                  <ListItem
+                    key={index}
+                    secondaryAction={
+                      <IconButton edge="end" onClick={() => removeSavedObject(index)}>
+                        <DeleteIcon />
+                      </IconButton>
+                    }
+                  >
+                    <ListItemText
+                      primary={obj.name}
+                      secondary={`Confidence: ${Math.round(obj.confidence * 100)}%`}
+                    />
+                  </ListItem>
+                ))}
+              </List>
             </Box>
           )}
         </CardContent>
