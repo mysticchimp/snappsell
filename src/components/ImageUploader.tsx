@@ -103,6 +103,16 @@ const ImageUploader: React.FC = () => {
         throw new Error('Camera access requires HTTPS');
       }
 
+      // Set scanning state first to ensure video element is rendered
+      setIsScanning(true);
+
+      // Small delay to ensure video element is mounted
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      if (!videoRef.current) {
+        throw new Error('Video element not found. Please try again.');
+      }
+
       setCameraStatus('Requesting camera permissions...');
       
       // Request camera with specific constraints
@@ -118,29 +128,39 @@ const ImageUploader: React.FC = () => {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       console.log('Camera stream obtained:', stream.getTracks());
       setCameraStatus('Camera access granted');
-      
-      if (!videoRef.current) {
-        throw new Error('Video element not found');
-      }
 
+      // Set up video element
       videoRef.current.srcObject = stream;
       
       // Wait for video to be ready
-      await new Promise((resolve) => {
-        if (videoRef.current) {
-          videoRef.current.onloadedmetadata = () => {
-            console.log('Video metadata loaded');
-            resolve(true);
-          };
+      await new Promise<void>((resolve, reject) => {
+        if (!videoRef.current) {
+          reject(new Error('Video element lost during initialization'));
+          return;
         }
-      });
 
-      // Ensure video plays
-      await videoRef.current.play();
-      console.log('Video playback started');
+        videoRef.current.onloadedmetadata = () => {
+          console.log('Video metadata loaded');
+          if (videoRef.current) {
+            videoRef.current.play()
+              .then(() => {
+                console.log('Video playback started');
+                resolve();
+              })
+              .catch(error => {
+                console.error('Error starting video playback:', error);
+                reject(new Error('Failed to start video playback'));
+              });
+          }
+        };
+
+        videoRef.current.onerror = (event) => {
+          console.error('Video element error:', event);
+          reject(new Error('Video element encountered an error'));
+        };
+      });
       
       streamRef.current = stream;
-      setIsScanning(true);
     } catch (err: any) {
       console.error('Camera error:', err);
       let errorMessage = 'Failed to access camera';
@@ -158,6 +178,15 @@ const ImageUploader: React.FC = () => {
       setError(errorMessage);
       setCameraStatus('Camera error: ' + errorMessage);
       setIsScanning(false);
+      
+      // Clean up if there was an error
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
     }
   };
 
@@ -174,6 +203,7 @@ const ImageUploader: React.FC = () => {
       videoRef.current.srcObject = null;
     }
     setIsScanning(false);
+    setCameraStatus('');
   };
 
   // Clean up camera stream when component unmounts
@@ -382,7 +412,7 @@ const ImageUploader: React.FC = () => {
                 variant="contained"
                 startIcon={<ScanIcon />}
                 onClick={isScanning ? stopScanning : startScanning}
-                disabled={isLoading}
+                color={isScanning ? "error" : "primary"}
               >
                 {isScanning ? 'Stop Scanning' : 'Start Scanning'}
               </Button>
