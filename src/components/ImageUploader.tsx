@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Box, 
   Button, 
@@ -44,6 +44,9 @@ const ImageUploader: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [cameraStatus, setCameraStatus] = useState<string>('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const analyzeIntervalRef = useRef<number | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const handleImageUpload = async (file: File) => {
     if (file) {
@@ -85,6 +88,69 @@ const ImageUploader: React.FC = () => {
       } finally {
         setIsLoading(false);
       }
+    }
+  };
+
+  const analyzeCurrentFrame = async () => {
+    if (!videoRef.current || !canvasRef.current || !streamRef.current) return;
+
+    try {
+      setIsAnalyzing(true);
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      
+      // Set canvas size to match video
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      // Draw current video frame to canvas
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // Convert canvas to blob
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((b) => {
+          if (b) resolve(b);
+        }, 'image/jpeg');
+      });
+
+      // Create file from blob
+      const file = new File([blob], 'frame.jpg', { type: 'image/jpeg' });
+      
+      // Send to backend for processing
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await fetch(`${API_URL}/api/analyze-image`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to analyze frame');
+      }
+
+      const data = await response.json();
+      setTags(data.labels || []);
+      setObjects(data.objects || []);
+    } catch (err) {
+      console.error('Error analyzing frame:', err);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const startRealTimeAnalysis = () => {
+    // Analyze every 2 seconds
+    analyzeIntervalRef.current = window.setInterval(analyzeCurrentFrame, 2000);
+  };
+
+  const stopRealTimeAnalysis = () => {
+    if (analyzeIntervalRef.current) {
+      clearInterval(analyzeIntervalRef.current);
+      analyzeIntervalRef.current = null;
     }
   };
 
@@ -161,6 +227,9 @@ const ImageUploader: React.FC = () => {
       });
       
       streamRef.current = stream;
+
+      // After successful camera initialization, start real-time analysis
+      startRealTimeAnalysis();
     } catch (err: any) {
       console.error('Camera error:', err);
       let errorMessage = 'Failed to access camera';
@@ -191,6 +260,7 @@ const ImageUploader: React.FC = () => {
   };
 
   const stopScanning = () => {
+    stopRealTimeAnalysis();
     console.log('Stopping camera stream...');
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => {
@@ -206,9 +276,10 @@ const ImageUploader: React.FC = () => {
     setCameraStatus('');
   };
 
-  // Clean up camera stream when component unmounts
-  React.useEffect(() => {
+  // Clean up on unmount
+  useEffect(() => {
     return () => {
+      stopRealTimeAnalysis();
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
@@ -306,24 +377,66 @@ const ImageUploader: React.FC = () => {
                     transform: 'scaleX(-1)'
                   }}
                 />
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={captureFrame}
-                  sx={{ 
-                    position: 'absolute', 
-                    bottom: 16, 
-                    left: '50%', 
-                    transform: 'translateX(-50%)',
-                    zIndex: 1,
-                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                    '&:hover': {
-                      backgroundColor: 'rgba(255, 255, 255, 1)'
-                    }
-                  }}
-                >
-                  Capture
-                </Button>
+                <canvas
+                  ref={canvasRef}
+                  style={{ display: 'none' }}
+                />
+                {objects.map((obj, index) => (
+                  <Box
+                    key={index}
+                    onClick={() => handleObjectClick(obj)}
+                    sx={{
+                      position: 'absolute',
+                      left: `${obj.boundingBox.left}%`,
+                      top: `${obj.boundingBox.top}%`,
+                      width: `${obj.boundingBox.width}%`,
+                      height: `${obj.boundingBox.height}%`,
+                      border: '2px solid #FFD700',
+                      borderRadius: 1,
+                      backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease-in-out',
+                      '&:hover': {
+                        backgroundColor: 'rgba(255, 215, 0, 0.2)',
+                        transform: 'scale(1.02)'
+                      }
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        backgroundColor: '#FFD700',
+                        color: 'black',
+                        fontSize: '12px',
+                        padding: '2px 4px',
+                        borderRadius: '0 0 4px 4px',
+                        maxWidth: '100%',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      {obj.name} ({Math.round(obj.confidence * 100)}%)
+                    </Typography>
+                  </Box>
+                ))}
+                {isAnalyzing && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: 8,
+                      right: 8,
+                      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                      borderRadius: '50%',
+                      padding: 1
+                    }}
+                  >
+                    <CircularProgress size={24} sx={{ color: 'white' }} />
+                  </Box>
+                )}
               </Box>
             ) : selectedImage ? (
               <Box sx={{ position: 'relative', width: '100%', maxWidth: '100%' }}>
@@ -421,7 +534,7 @@ const ImageUploader: React.FC = () => {
                   variant="outlined"
                   component="span"
                   startIcon={<CloudUploadIcon />}
-                  disabled={isLoading}
+                  disabled={isLoading || isScanning}
                 >
                   Upload
                 </Button>
