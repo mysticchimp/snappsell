@@ -43,6 +43,7 @@ const ImageUploader: React.FC = () => {
   const imageRef = useRef<HTMLImageElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const [cameraStatus, setCameraStatus] = useState<string>('');
 
   const handleImageUpload = async (file: File) => {
     if (file) {
@@ -90,7 +91,19 @@ const ImageUploader: React.FC = () => {
   const startScanning = async () => {
     try {
       setError(null);
-      console.log('Requesting camera access...');
+      setCameraStatus('Checking for camera support...');
+
+      // First check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera API is not supported in this browser');
+      }
+
+      // Check if we're on HTTPS (required for camera access)
+      if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+        throw new Error('Camera access requires HTTPS');
+      }
+
+      setCameraStatus('Requesting camera permissions...');
       
       // Request camera with specific constraints
       const constraints = {
@@ -98,40 +111,52 @@ const ImageUploader: React.FC = () => {
           facingMode: 'environment',
           width: { ideal: 1280 },
           height: { ideal: 720 }
-        }
+        },
+        audio: false
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      console.log('Camera access granted:', stream);
+      console.log('Camera stream obtained:', stream.getTracks());
+      setCameraStatus('Camera access granted');
       
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        // Ensure video plays when ready
-        videoRef.current.onloadedmetadata = () => {
-          console.log('Video metadata loaded');
-          videoRef.current?.play().catch(e => {
-            console.error('Error playing video:', e);
-            setError('Failed to start video stream');
-          });
-        };
+      if (!videoRef.current) {
+        throw new Error('Video element not found');
       }
+
+      videoRef.current.srcObject = stream;
+      
+      // Wait for video to be ready
+      await new Promise((resolve) => {
+        if (videoRef.current) {
+          videoRef.current.onloadedmetadata = () => {
+            console.log('Video metadata loaded');
+            resolve(true);
+          };
+        }
+      });
+
+      // Ensure video plays
+      await videoRef.current.play();
+      console.log('Video playback started');
       
       streamRef.current = stream;
       setIsScanning(true);
     } catch (err: any) {
-      console.error('Error accessing camera:', err);
+      console.error('Camera error:', err);
       let errorMessage = 'Failed to access camera';
       
-      // Provide more specific error messages
       if (err.name === 'NotAllowedError') {
-        errorMessage = 'Camera access was denied. Please grant permission to use your camera.';
+        errorMessage = 'Camera access was denied. Please grant permission and try again.';
       } else if (err.name === 'NotFoundError') {
         errorMessage = 'No camera found on your device.';
       } else if (err.name === 'NotReadableError') {
         errorMessage = 'Camera is already in use by another application.';
+      } else if (err.message) {
+        errorMessage = err.message;
       }
       
       setError(errorMessage);
+      setCameraStatus('Camera error: ' + errorMessage);
       setIsScanning(false);
     }
   };
@@ -209,6 +234,12 @@ const ImageUploader: React.FC = () => {
               {error}
             </Alert>
           )}
+
+          {cameraStatus && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              {cameraStatus}
+            </Alert>
+          )}
           
           <Box sx={{ 
             border: '2px dashed #ccc', 
@@ -229,7 +260,8 @@ const ImageUploader: React.FC = () => {
                 position: 'relative', 
                 width: '100%', 
                 maxWidth: '100%',
-                aspectRatio: '16/9'
+                aspectRatio: '16/9',
+                backgroundColor: '#000'
               }}>
                 <video
                   ref={videoRef}
@@ -240,7 +272,8 @@ const ImageUploader: React.FC = () => {
                     width: '100%',
                     height: '100%',
                     objectFit: 'cover',
-                    borderRadius: '8px'
+                    borderRadius: '8px',
+                    transform: 'scaleX(-1)'
                   }}
                 />
                 <Button
@@ -252,7 +285,11 @@ const ImageUploader: React.FC = () => {
                     bottom: 16, 
                     left: '50%', 
                     transform: 'translateX(-50%)',
-                    zIndex: 1
+                    zIndex: 1,
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 1)'
+                    }
                   }}
                 >
                   Capture
