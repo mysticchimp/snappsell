@@ -89,27 +89,76 @@ const ImageUploader: React.FC = () => {
 
   const startScanning = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } 
-      });
-      streamRef.current = stream;
+      setError(null);
+      console.log('Requesting camera access...');
+      
+      // Request camera with specific constraints
+      const constraints = {
+        video: {
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log('Camera access granted:', stream);
+      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        // Ensure video plays when ready
+        videoRef.current.onloadedmetadata = () => {
+          console.log('Video metadata loaded');
+          videoRef.current?.play().catch(e => {
+            console.error('Error playing video:', e);
+            setError('Failed to start video stream');
+          });
+        };
       }
+      
+      streamRef.current = stream;
       setIsScanning(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error accessing camera:', err);
-      setError('Failed to access camera');
+      let errorMessage = 'Failed to access camera';
+      
+      // Provide more specific error messages
+      if (err.name === 'NotAllowedError') {
+        errorMessage = 'Camera access was denied. Please grant permission to use your camera.';
+      } else if (err.name === 'NotFoundError') {
+        errorMessage = 'No camera found on your device.';
+      } else if (err.name === 'NotReadableError') {
+        errorMessage = 'Camera is already in use by another application.';
+      }
+      
+      setError(errorMessage);
+      setIsScanning(false);
     }
   };
 
   const stopScanning = () => {
+    console.log('Stopping camera stream...');
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach(track => {
+        track.stop();
+        console.log('Track stopped:', track.label);
+      });
       streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
     }
     setIsScanning(false);
   };
+
+  // Clean up camera stream when component unmounts
+  React.useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
 
   const captureFrame = async () => {
     if (videoRef.current) {
@@ -172,21 +221,39 @@ const ImageUploader: React.FC = () => {
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            position: 'relative'
+            position: 'relative',
+            overflow: 'hidden'
           }}>
             {isScanning ? (
-              <Box sx={{ position: 'relative', width: '100%', maxWidth: '100%' }}>
+              <Box sx={{ 
+                position: 'relative', 
+                width: '100%', 
+                maxWidth: '100%',
+                aspectRatio: '16/9'
+              }}>
                 <video
                   ref={videoRef}
                   autoPlay
                   playsInline
-                  style={{ maxWidth: '100%', maxHeight: 300 }}
+                  muted
+                  style={{ 
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    borderRadius: '8px'
+                  }}
                 />
                 <Button
                   variant="contained"
                   color="primary"
                   onClick={captureFrame}
-                  sx={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)' }}
+                  sx={{ 
+                    position: 'absolute', 
+                    bottom: 16, 
+                    left: '50%', 
+                    transform: 'translateX(-50%)',
+                    zIndex: 1
+                  }}
                 >
                   Capture
                 </Button>
