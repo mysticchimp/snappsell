@@ -31,6 +31,14 @@ interface ObjectDetection {
   };
 }
 
+const OBJECT_COLORS: { [key: string]: string } = {
+  person: '#FF69B4', // Pink for people
+  car: '#00FF00',    // Green for vehicles
+  dog: '#00BFFF',    // Blue for animals
+  traffic_light: '#FFFF00', // Yellow for traffic signs
+  default: '#FFD700'  // Default gold color
+};
+
 const ImageUploader: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [tags, setTags] = useState<string[]>([]);
@@ -361,70 +369,57 @@ const ImageUploader: React.FC = () => {
                   ref={canvasRef}
                   style={{ display: 'none' }}
                 />
-                {objects.map((obj, index) => (
-                  <Box
-                    key={index}
-                    onClick={() => handleObjectClick(obj)}
-                    sx={{
-                      position: 'absolute',
-                      left: `${obj.boundingBox.left}%`,
-                      top: `${obj.boundingBox.top}%`,
-                      width: `${obj.boundingBox.width}%`,
-                      height: `${obj.boundingBox.height}%`,
-                      border: '3px solid #FFD700',
-                      boxShadow: '0 0 8px rgba(255, 215, 0, 0.5)',
-                      borderRadius: 1,
-                      backgroundColor: 'rgba(255, 215, 0, 0.15)',
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s ease-in-out',
-                      animation: 'boxPulse 2s infinite',
-                      '&:hover': {
-                        backgroundColor: 'rgba(255, 215, 0, 0.25)',
-                        transform: 'scale(1.02)',
-                        boxShadow: '0 0 12px rgba(255, 215, 0, 0.7)'
-                      },
-                      '@keyframes boxPulse': {
-                        '0%': {
-                          boxShadow: '0 0 8px rgba(255, 215, 0, 0.5)'
-                        },
-                        '50%': {
-                          boxShadow: '0 0 16px rgba(255, 215, 0, 0.7)'
-                        },
-                        '100%': {
-                          boxShadow: '0 0 8px rgba(255, 215, 0, 0.5)'
-                        }
-                      }
-                    }}
-                  >
-                    <Typography
+                {objects.map((obj, index) => {
+                  const color = OBJECT_COLORS[obj.name.toLowerCase()] || OBJECT_COLORS.default;
+                  return (
+                    <Box
+                      key={index}
                       sx={{
-                        backgroundColor: '#FFD700',
-                        color: 'black',
-                        fontSize: '14px',
-                        padding: '4px 8px',
-                        borderRadius: '0 0 8px 8px',
-                        maxWidth: '100%',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        fontWeight: 'bold',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                        backdropFilter: 'blur(4px)',
-                        transform: 'translateY(-2px)',
-                        transition: 'all 0.3s ease-in-out',
-                        '&:hover': {
-                          transform: 'translateY(0)',
-                          backgroundColor: '#FFE44D'
-                        }
+                        position: 'relative',
+                        width: 0,
+                        height: 0,
+                        left: `${obj.boundingBox.left}%`,
+                        top: `${obj.boundingBox.top}%`
                       }}
                     >
-                      {obj.name} ({Math.round(obj.confidence * 100)}%)
-                    </Typography>
-                  </Box>
-                ))}
+                      {/* Label above the box */}
+                      <Typography
+                        sx={{
+                          position: 'absolute',
+                          top: '-24px',
+                          left: '0',
+                          backgroundColor: color,
+                          color: color === '#FFFF00' ? 'black' : 'white',
+                          fontSize: '12px',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          whiteSpace: 'nowrap',
+                          fontWeight: 'bold',
+                          textTransform: 'lowercase',
+                          zIndex: 2
+                        }}
+                      >
+                        {obj.name.toLowerCase()}
+                      </Typography>
+
+                      {/* Bounding box */}
+                      <Box
+                        onClick={() => handleObjectClick(obj)}
+                        sx={{
+                          position: 'absolute',
+                          width: `${obj.boundingBox.width}%`,
+                          height: `${obj.boundingBox.height}%`,
+                          border: `2px solid ${color}`,
+                          boxSizing: 'border-box',
+                          cursor: 'pointer',
+                          '&:hover': {
+                            opacity: 0.8
+                          }
+                        }}
+                      />
+                    </Box>
+                  );
+                })}
                 {isAnalyzing && (
                   <Box
                     sx={{
@@ -442,75 +437,57 @@ const ImageUploader: React.FC = () => {
               </Box>
             ) : selectedImage ? (
               <Box sx={{ position: 'relative', width: '100%', maxWidth: '100%' }}>
-                <img 
-                  src={selectedImage} 
-                  alt="Uploaded item" 
-                  style={{ maxWidth: '100%', maxHeight: 300 }}
-                />
-                {objects.map((obj, index) => (
-                  <Box
-                    key={index}
-                    onClick={() => handleObjectClick(obj)}
-                    sx={{
-                      position: 'absolute',
-                      left: `${obj.boundingBox.left}%`,
-                      top: `${obj.boundingBox.top}%`,
-                      width: `${obj.boundingBox.width}%`,
-                      height: `${obj.boundingBox.height}%`,
-                      border: '3px solid #FFD700',
-                      boxShadow: '0 0 8px rgba(255, 215, 0, 0.5)',
-                      borderRadius: 1,
-                      backgroundColor: 'rgba(255, 215, 0, 0.15)',
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s ease-in-out',
-                      animation: 'boxPulse 2s infinite',
-                      '&:hover': {
-                        backgroundColor: 'rgba(255, 215, 0, 0.25)',
-                        transform: 'scale(1.02)',
-                        boxShadow: '0 0 12px rgba(255, 215, 0, 0.7)'
-                      },
-                      '@keyframes boxPulse': {
-                        '0%': {
-                          boxShadow: '0 0 8px rgba(255, 215, 0, 0.5)'
-                        },
-                        '50%': {
-                          boxShadow: '0 0 16px rgba(255, 215, 0, 0.7)'
-                        },
-                        '100%': {
-                          boxShadow: '0 0 8px rgba(255, 215, 0, 0.5)'
-                        }
-                      }
-                    }}
-                  >
-                    <Typography
+                {objects.map((obj, index) => {
+                  const color = OBJECT_COLORS[obj.name.toLowerCase()] || OBJECT_COLORS.default;
+                  return (
+                    <Box
+                      key={index}
                       sx={{
-                        backgroundColor: '#FFD700',
-                        color: 'black',
-                        fontSize: '14px',
-                        padding: '4px 8px',
-                        borderRadius: '0 0 8px 8px',
-                        maxWidth: '100%',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        fontWeight: 'bold',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                        backdropFilter: 'blur(4px)',
-                        transform: 'translateY(-2px)',
-                        transition: 'all 0.3s ease-in-out',
-                        '&:hover': {
-                          transform: 'translateY(0)',
-                          backgroundColor: '#FFE44D'
-                        }
+                        position: 'relative',
+                        width: 0,
+                        height: 0,
+                        left: `${obj.boundingBox.left}%`,
+                        top: `${obj.boundingBox.top}%`
                       }}
                     >
-                      {obj.name} ({Math.round(obj.confidence * 100)}%)
-                    </Typography>
-                  </Box>
-                ))}
+                      {/* Label above the box */}
+                      <Typography
+                        sx={{
+                          position: 'absolute',
+                          top: '-24px',
+                          left: '0',
+                          backgroundColor: color,
+                          color: color === '#FFFF00' ? 'black' : 'white',
+                          fontSize: '12px',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          whiteSpace: 'nowrap',
+                          fontWeight: 'bold',
+                          textTransform: 'lowercase',
+                          zIndex: 2
+                        }}
+                      >
+                        {obj.name.toLowerCase()}
+                      </Typography>
+
+                      {/* Bounding box */}
+                      <Box
+                        onClick={() => handleObjectClick(obj)}
+                        sx={{
+                          position: 'absolute',
+                          width: `${obj.boundingBox.width}%`,
+                          height: `${obj.boundingBox.height}%`,
+                          border: `2px solid ${color}`,
+                          boxSizing: 'border-box',
+                          cursor: 'pointer',
+                          '&:hover': {
+                            opacity: 0.8
+                          }
+                        }}
+                      />
+                    </Box>
+                  );
+                })}
                 {isLoading && (
                   <Box sx={{
                     position: 'absolute',
